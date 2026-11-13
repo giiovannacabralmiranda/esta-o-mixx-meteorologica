@@ -1,0 +1,496 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Estação Meteorológica Inteligente</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Biblioteca do mapa interativo -->
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    >
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        header {
+            background: #14532d;
+            color: white;
+            padding: 28px 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            margin-bottom: 10px;
+            font-size: 27px;
+        }
+
+        header p {
+            font-size: 15px;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 25px auto;
+            padding: 0 18px;
+        }
+
+        .status {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px #00000010;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: white;
+            padding: 22px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px #00000010;
+        }
+
+        .card h3 {
+            font-size: 15px;
+            color: #475569;
+            margin-bottom: 12px;
+        }
+
+        .valor {
+            font-size: 27px;
+            font-weight: bold;
+            color: #166534;
+        }
+
+        .unidade {
+            font-size: 13px;
+            color: #64748b;
+            margin-top: 5px;
+        }
+
+        section {
+            background: white;
+            padding: 22px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 8px #00000010;
+        }
+
+        section h2 {
+            color: #14532d;
+            margin-bottom: 18px;
+            font-size: 21px;
+        }
+
+        .graficos {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .grafico {
+            min-width: 0;
+            height: 280px;
+        }
+
+        /* Área do mapa interativo */
+        .mapa {
+            width: 100%;
+            height: 350px;
+            border-radius: 8px;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .aviso {
+            color: #64748b;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        .tabela-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 750px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+        }
+
+        th {
+            background: #dcfce7;
+            color: #14532d;
+        }
+
+        footer {
+            background: #14532d;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 22px;
+            }
+
+            .valor {
+                font-size: 23px;
+            }
+
+            section {
+                padding: 15px;
+            }
+
+            .mapa {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>Estação Meteorológica Inteligente</h1>
+    <p>Monitoramento ambiental urbano e sustentabilidade</p>
+</header>
+
+<main>
+
+    <div class="status">
+        <strong>Status das medições:</strong>
+        <span id="status">Aguardando dados...</span>
+        <p class="aviso">Atualização automática a cada 5 segundos.</p>
+    </div>
+
+    <div class="cards">
+
+        <div class="card">
+            <h3>Temperatura</h3>
+            <div class="valor" id="temperatura">--</div>
+            <div class="unidade">Graus Celsius (°C)</div>
+        </div>
+
+        <div class="card">
+            <h3>Umidade do ar</h3>
+            <div class="valor" id="umidade">--</div>
+            <div class="unidade">Porcentagem (%)</div>
+        </div>
+
+        <div class="card">
+            <h3>Pressão atmosférica</h3>
+            <div class="valor" id="pressao">--</div>
+            <div class="unidade">Hectopascal (hPa)</div>
+        </div>
+
+        <div class="card">
+            <h3>Luminosidade</h3>
+            <div class="valor" id="luminosidade">--</div>
+            <div class="unidade">Valor de leitura do sensor</div>
+        </div>
+
+        <div class="card">
+            <h3>Qualidade do ar</h3>
+            <div class="valor" id="qualidade_ar">--</div>
+            <div class="unidade">Valor simulado pelo potenciômetro</div>
+        </div>
+
+        <div class="card">
+            <h3>Índice pluviométrico</h3>
+            <div class="valor" id="chuva_mm">--</div>
+            <div class="unidade">Milímetros (mm)</div>
+        </div>
+
+    </div>
+
+    <section>
+        <h2>Gráficos das condições ambientais</h2>
+
+        <div class="graficos">
+
+            <div class="grafico">
+                <canvas id="graficoTemperatura"></canvas>
+            </div>
+
+            <div class="grafico">
+                <canvas id="graficoUmidade"></canvas>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- NOVO MAPA INTERATIVO -->
+    <section>
+        <h2>Localização da Estação Meteorológica</h2>
+
+        <p class="aviso">
+            Localização geográfica demonstrativa do protótipo,
+            utilizada para apresentar os recursos de geolocalização.
+        </p>
+
+        <div id="mapa" class="mapa"></div>
+
+        <p class="aviso">
+            Latitude: -23.6866 |
+            Longitude: -46.6234
+        </p>
+
+        <p class="aviso">
+            As coordenadas são de referência e não representam
+            a posição de um sensor GPS físico.
+        </p>
+    </section>
+
+    <section>
+        <h2>Histórico das últimas medições</h2>
+
+        <div class="tabela-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data e hora</th>
+                        <th>Temperatura</th>
+                        <th>Umidade</th>
+                        <th>Pressão</th>
+                        <th>Luminosidade</th>
+                        <th>Qualidade do ar</th>
+                        <th>Chuva</th>
+                    </tr>
+                </thead>
+
+                <tbody id="tabela">
+                    <tr>
+                        <td colspan="7">Aguardando medições...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</main>
+
+<footer>
+    <p>Projeto PD-II - Estação Meteorológica Inteligente</p>
+    <p>Monitoramento ambiental e sustentabilidade</p>
+</footer>
+
+<!-- Biblioteca necessária para o mapa -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+    // CONFIGURAÇÃO DO MAPA INTERATIVO
+
+    const latitude = -23.6866;
+    const longitude = -46.6234;
+
+    const mapa = L.map('mapa').setView(
+        [latitude, longitude],
+        13
+    );
+
+    L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {
+            attribution: '&copy; OpenStreetMap contributors'
+        }
+    ).addTo(mapa);
+
+    L.marker([latitude, longitude])
+        .addTo(mapa)
+        .bindPopup(
+            'Estação Meteorológica - Localização demonstrativa'
+        );
+
+    // GRÁFICO DE TEMPERATURA
+
+    const graficoTemperatura = new Chart(
+        document.getElementById("graficoTemperatura"),
+        {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [{
+                    label: "Temperatura (°C)",
+                    data: [],
+                    borderColor: "#16a34a",
+                    backgroundColor: "#16a34a22",
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        }
+    );
+
+    // GRÁFICO DE UMIDADE
+
+    const graficoUmidade = new Chart(
+        document.getElementById("graficoUmidade"),
+        {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [{
+                    label: "Umidade (%)",
+                    data: [],
+                    borderColor: "#2563eb",
+                    backgroundColor: "#2563eb22",
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        }
+    );
+
+    // ATUALIZAÇÃO DOS DADOS
+
+    async function atualizarDashboard() {
+
+        try {
+
+            const resposta = await fetch("/api/medicoes");
+
+            if (!resposta.ok) {
+                throw new Error("Não foi possível buscar as medições.");
+            }
+
+            const dados = await resposta.json();
+
+            if (dados.length === 0) {
+
+                document.getElementById("status").textContent =
+                    "Servidor conectado, aguardando medições do ESP32.";
+
+                return;
+            }
+
+            const ultima = dados[0];
+
+            document.getElementById("temperatura").textContent =
+                Number(ultima.temperatura).toFixed(1);
+
+            document.getElementById("umidade").textContent =
+                Number(ultima.umidade).toFixed(1);
+
+            document.getElementById("pressao").textContent =
+                Number(ultima.pressao).toFixed(1);
+
+            document.getElementById("luminosidade").textContent =
+                Number(ultima.luminosidade).toFixed(0);
+
+            document.getElementById("qualidade_ar").textContent =
+                Number(ultima.qualidade_ar).toFixed(0);
+
+            document.getElementById("chuva_mm").textContent =
+                Number(ultima.chuva_mm).toFixed(1);
+
+            document.getElementById("status").textContent =
+                "Medições recebidas com sucesso!";
+
+            const recentes = dados.slice().reverse();
+
+            const horarios = recentes.map(item => item.data_hora);
+            const temperaturas = recentes.map(item => item.temperatura);
+            const umidades = recentes.map(item => item.umidade);
+
+            graficoTemperatura.data.labels = horarios;
+            graficoTemperatura.data.datasets[0].data = temperaturas;
+            graficoTemperatura.update();
+
+            graficoUmidade.data.labels = horarios;
+            graficoUmidade.data.datasets[0].data = umidades;
+            graficoUmidade.update();
+
+            // PREENCHIMENTO DA TABELA
+
+            const tabela = document.getElementById("tabela");
+
+            tabela.innerHTML = "";
+
+            dados.forEach(item => {
+
+                const linha = document.createElement("tr");
+
+                const valores = [
+                    item.data_hora,
+                    Number(item.temperatura).toFixed(1) + " °C",
+                    Number(item.umidade).toFixed(1) + " %",
+                    Number(item.pressao).toFixed(1) + " hPa",
+                    Number(item.luminosidade).toFixed(0),
+                    Number(item.qualidade_ar).toFixed(0),
+                    Number(item.chuva_mm).toFixed(1) + " mm"
+                ];
+
+                valores.forEach(valor => {
+
+                    const celula = document.createElement("td");
+
+                    celula.textContent = valor;
+
+                    linha.appendChild(celula);
+
+                });
+
+                tabela.appendChild(linha);
+
+            });
+
+        } catch (erro) {
+
+            document.getElementById("status").textContent =
+                "Não foi possível carregar as medições.";
+
+            console.error(erro);
+
+        }
+
+    }
+
+    atualizarDashboard();
+
+    setInterval(atualizarDashboard, 5000);
+
+</script>
+
+</body>
+</html>
